@@ -1,0 +1,56 @@
+from pyfirmata import Arduino, ArduinoMega
+from pyfirmata import util
+from wyliodrin import *
+from time import *
+from threading import Timer
+
+Count = None
+GasLimit = None
+Light0 = None
+Light1 = None
+Light2 = None
+Gas = None
+
+def setBoard(boardType, port):
+    if boardType == 'arduino':
+        board = Arduino(port)
+    else:
+        board = ArduinoMega(port)
+return board
+board=setBoard('arduino', '/dev/ttyACM0')
+reader = util.Iterator(board)
+reader.start()
+
+pin_var = board.get_pin("a:0:i")
+pin_var2 = board.get_pin("a:1:i")
+pin_var3 = board.get_pin("a:2:i")
+pin_var4 = board.get_pin("a:3:i")
+pin_var5 = board.get_pin("d:2:o")
+
+Count = 0
+GasLimit = 375
+
+def loopCode():
+    global Light0, Light1, Light2, Gas, Count, GasLimit
+ 	Light0 = round((pin_var.read() or 0) * 1023)
+ 	Light1 = round((pin_var2.read() or 0) * 1023)
+ 	Light2 = round((pin_var3.read() or 0) * 1023)
+ 	Gas = round((pin_var4.read() or 0) * 1023)
+ 	if Light0 >= 1000:
+ 	    Count = 1
+		import urllib3
+		http = urllib3.PoolManager()
+		http.request('POST','http://onlinesmartparking.xyz/input.php',fields= {'light0': int(Light0), 'light1': int(Light1), 'light2': int(Light2),'gas':int(Gas),'Count':int(Count)});
+		sleep (10)
+		Count = 0
+	else:
+        import urllib3
+ 		http = urllib3.PoolManager()
+		http.request('POST','http://onlinesmartparking.xyz/input.php',fields= {'light0': int(Light0), 'light1': int(Light1), 'light2': int(Light2),'gas':int(Gas),'Count':int(Count)});
+ 	if Gas >= GasLimit:
+ 		pin_var5.write(1)
+	else:
+ 		pin_var5.write(0)
+ 		Timer(1, loopCode).start()
+
+loopCode()
